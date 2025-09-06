@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>ĐÈN HÀNH LANG CÔNG NGHIỆP</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; background: #cce6ff; margin:0; padding:0;}
+    h1 { color: red; margin:16px 0;}
+    .container { display: flex; justify-content: center; align-items: stretch; height: calc(100vh - 64px); }
+    .column { width: 45%; padding: 20px; box-sizing: border-box; }
+    .divider { width: 3px; background: #333; margin: 0 10px; }
+    button {
+      width: 120px; height: 50px; font-size: 18px;
+      margin: 10px; border-radius: 10px; border: none;
+      cursor: pointer;
+    }
+    .on { background: green; color: white; }
+    .off { background: red; color: white; }
+    .mode { background: #3399ff; color: white; font-weight: bold; }
+    input[type=range] { width: 80%; margin: 20px; }
+    .disabled-mode *:not(.mode) { opacity: 0.4; pointer-events: none; }
+    p, h3 { font-size: 18px; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>ĐÈN HÀNH LANG CÔNG NGHIỆP</h1>
+  <div class="container">
+    <!-- MANU Mode -->
+    <div class="column" id="manu">
+      <button class="mode" onclick="fetch('/setmode?m=manu').then(()=>updateUI())">MANU</button>
+      <p>Trạng thái Đèn 1: <span id="state1">-</span></p>
+      <button class="on" onclick="fetch('/on1').then(()=>updateUI())">ON</button>
+      <button class="off" onclick="fetch('/off1').then(()=>updateUI())">OFF</button>
+      <p>Độ sáng Đèn 1:</p>
+      <input type="range" min="0" max="255" value="255" id="bright1" oninput="setBrightness(1,this.value)">
+      <span id="val1">255</span>
+
+      <p>Trạng thái Đèn 2: <span id="state2">-</span></p>
+      <button class="on" onclick="fetch('/on2').then(()=>updateUI())">ON</button>
+      <button class="off" onclick="fetch('/off2').then(()=>updateUI())">OFF</button>
+      <p>Độ sáng Đèn 2:</p>
+      <input type="range" min="0" max="255" value="255" id="bright2" oninput="setBrightness(2,this.value)">
+      <span id="val2">255</span>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- AUTO Mode -->
+    <div class="column" id="auto">
+      <button class="mode" onclick="fetch('/setmode?m=auto').then(()=>updateUI())">AUTO</button>
+      <p>Trạng thái CB1: <span id="pir1">-</span></p>
+      <p>Trạng thái Đèn 1: <span id="state1_a">-</span></p>
+      <p>Trạng thái CB2: <span id="pir2">-</span></p>
+      <p>Trạng thái Đèn 2: <span id="state2_a">-</span></p>
+    </div>
+  </div>
+
+<script>
+async function setBrightness(lamp, value) {
+  document.getElementById('val' + lamp).innerText = value;
+  await fetch('/set?lamp=' + lamp + '&value=' + value);
+}
+
+async function updateUI() {
+  const cmdRes = await fetch('/api/getcmd');
+  const cmd = await cmdRes.json();
+  const stRes = await fetch('/api/status');
+  const st = await stRes.json();
+
+  if (cmd.mode === 'manu') {
+    document.getElementById('manu').classList.remove('disabled-mode');
+    document.getElementById('auto').classList.add('disabled-mode');
+  } else {
+    document.getElementById('auto').classList.remove('disabled-mode');
+    document.getElementById('manu').classList.add('disabled-mode');
+  }
+
+  document.getElementById('state1').innerText = cmd.lamp1 ? 'BẬT' : 'TẮT';
+  document.getElementById('state2').innerText = cmd.lamp2 ? 'BẬT' : 'TẮT';
+  document.getElementById('bright1').value = cmd.bright1;
+  document.getElementById('bright2').value = cmd.bright2;
+  document.getElementById('val1').innerText = cmd.bright1;
+  document.getElementById('val2').innerText = cmd.bright2;
+
+  document.getElementById('pir1').innerText = st.pir1 ? 'BẬT' : 'TẮT';
+  document.getElementById('pir2').innerText = st.pir2 ? 'BẬT' : 'TẮT';
+  document.getElementById('state1_a').innerText = st.lamp1 ? 'BẬT' : 'TẮT';
+  document.getElementById('state2_a').innerText = st.lamp2 ? 'BẬT' : 'TẮT';
+}
+
+setInterval(updateUI, 1500);
+updateUI();
+</script>
+</body>
+</html>
