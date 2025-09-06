@@ -1,85 +1,55 @@
-import express from "express";
-import bodyParser from "body-parser";
-
+const express = require("express");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(bodyParser.json());
+app.use(express.json());
 app.use(express.static("public"));
 
-// ================== STATE ==================
-let cmdState = {
-  mode: "manu",    // manu hoặc auto
-  lamp1: 0,
-  lamp2: 0,
-  bright1: 255,
-  bright2: 255
-};
-
-let deviceState = {
-  pir1: 0,
-  pir2: 0,
+// ====== STATE (shared with ESP32) ======
+let state = {
+  mode: "manu",   // manu | auto
   lamp1: 0,
   lamp2: 0,
   bright1: 255,
   bright2: 255,
-  mode: "manu"
+  pir1: 0,
+  pir2: 0
 };
 
-// ================== API ==================
-
-// ESP32 GET command
+// ====== API cho ESP32 ======
 app.get("/api/getcmd", (req, res) => {
-  res.json(cmdState);
+  res.json({
+    mode: state.mode,
+    lamp1: state.lamp1,
+    lamp2: state.lamp2,
+    bright1: state.bright1,
+    bright2: state.bright2
+  });
 });
 
-// ESP32 POST status
 app.post("/api/status", (req, res) => {
-  deviceState = { ...deviceState, ...req.body };
-  res.json({ ok: true, state: deviceState });
+  const { pir1, pir2, lamp1, lamp2, bright1, bright2, mode } = req.body;
+  state = { ...state, pir1, pir2, lamp1, lamp2, bright1, bright2, mode };
+  res.json({ ok: true, state });
 });
 
-// ================== Web UI endpoints ==================
+// ====== API cho Web UI ======
+app.get("/on1", (req, res) => { state.lamp1 = 1; res.json(state); });
+app.get("/off1", (req, res) => { state.lamp1 = 0; res.json(state); });
+app.get("/on2", (req, res) => { state.lamp2 = 1; res.json(state); });
+app.get("/off2", (req, res) => { state.lamp2 = 0; res.json(state); });
 
-// Đổi mode
-app.post("/setmode", (req, res) => {
-  const { m } = req.query;
-  if (m === "manu" || m === "auto") {
-    cmdState.mode = m;
-    res.json({ ok: true, mode: cmdState.mode });
-  } else {
-    res.status(400).json({ ok: false, error: "Invalid mode" });
-  }
+app.get("/setmode", (req, res) => {
+  if (req.query.m) state.mode = req.query.m;
+  res.json(state);
 });
 
-// Bật/tắt đèn
-app.post("/lamp", (req, res) => {
-  const { id, state } = req.query;
-  if (id === "1" || id === "2") {
-    const val = state === "1" ? 1 : 0;
-    if (id === "1") cmdState.lamp1 = val;
-    if (id === "2") cmdState.lamp2 = val;
-    res.json({ ok: true, cmdState });
-  } else {
-    res.status(400).json({ ok: false, error: "Invalid lamp id" });
-  }
+app.get("/set", (req, res) => {
+  const lamp = parseInt(req.query.lamp);
+  const value = parseInt(req.query.value);
+  if (lamp === 1) state.bright1 = value;
+  if (lamp === 2) state.bright2 = value;
+  res.json(state);
 });
 
-// Đặt độ sáng
-app.post("/brightness", (req, res) => {
-  const { id, value } = req.query;
-  const val = parseInt(value);
-  if (id === "1") cmdState.bright1 = val;
-  else if (id === "2") cmdState.bright2 = val;
-  res.json({ ok: true, cmdState });
-});
-
-// Lấy trạng thái thiết bị (cho web)
-app.get("/api/status", (req, res) => {
-  res.json(deviceState);
-});
-
-// ================== START ==================
-app.listen(PORT, () => {
-  console.log("✅ Server running on port " + PORT);
-});
+app.listen(PORT, () => console.log(`✅ Server running on :${PORT}`));
