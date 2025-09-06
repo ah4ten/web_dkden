@@ -5,7 +5,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(bodyParser.json());
-app.use(express.static("public")); // phục vụ file index.html
+app.use(express.static("public"));
 
 // ================== STATE ==================
 let cmdState = {
@@ -39,50 +39,47 @@ app.post("/api/status", (req, res) => {
   res.json({ ok: true, state: deviceState });
 });
 
-// Web UI set mode
-app.get("/setmode", (req, res) => {
-  const m = req.query.m;
+// ================== Web UI endpoints ==================
+
+// Đổi mode
+app.post("/setmode", (req, res) => {
+  const { m } = req.query;
   if (m === "manu" || m === "auto") {
     cmdState.mode = m;
-    res.send("Mode set " + m);
+    res.json({ ok: true, mode: cmdState.mode });
   } else {
-    res.status(400).send("Invalid mode");
+    res.status(400).json({ ok: false, error: "Invalid mode" });
   }
 });
 
-// Web UI control lamps
-app.get("/on1", (req, res) => {
-  cmdState.lamp1 = 1;
-  res.send("Lamp1 ON");
-});
-app.get("/off1", (req, res) => {
-  cmdState.lamp1 = 0;
-  res.send("Lamp1 OFF");
-});
-app.get("/on2", (req, res) => {
-  cmdState.lamp2 = 1;
-  res.send("Lamp2 ON");
-});
-app.get("/off2", (req, res) => {
-  cmdState.lamp2 = 0;
-  res.send("Lamp2 OFF");
+// Bật/tắt đèn
+app.post("/lamp", (req, res) => {
+  const { id, state } = req.query;
+  if (id === "1" || id === "2") {
+    const val = state === "1" ? 1 : 0;
+    if (id === "1") cmdState.lamp1 = val;
+    if (id === "2") cmdState.lamp2 = val;
+    res.json({ ok: true, cmdState });
+  } else {
+    res.status(400).json({ ok: false, error: "Invalid lamp id" });
+  }
 });
 
-// Web UI set brightness
-app.get("/set", (req, res) => {
-  const lamp = parseInt(req.query.lamp);
-  const value = parseInt(req.query.value);
-  if (lamp === 1) cmdState.bright1 = value;
-  if (lamp === 2) cmdState.bright2 = value;
-  res.send("Brightness set");
+// Đặt độ sáng
+app.post("/brightness", (req, res) => {
+  const { id, value } = req.query;
+  const val = parseInt(value);
+  if (id === "1") cmdState.bright1 = val;
+  else if (id === "2") cmdState.bright2 = val;
+  res.json({ ok: true, cmdState });
 });
 
-// API cho web lấy trạng thái từ ESP
+// Lấy trạng thái thiết bị (cho web)
 app.get("/api/status", (req, res) => {
   res.json(deviceState);
 });
 
 // ================== START ==================
 app.listen(PORT, () => {
-  console.log("Server running on port " + PORT);
+  console.log("✅ Server running on port " + PORT);
 });
